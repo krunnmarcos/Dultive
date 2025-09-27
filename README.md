@@ -28,6 +28,14 @@ Workspace/Dultive
 │   ├── services
 │   ├── types
 │   └── utils
+├── backend
+│   ├── package.json
+│   ├── src
+│   │   ├── controllers
+│   │   ├── middlewares
+│   │   ├── models
+│   │   └── routes
+│   └── tsconfig.json
 └── tsconfig.json
 ```
 
@@ -36,6 +44,7 @@ Workspace/Dultive
 - `navigation/`: navegação entre telas públicas (login/registro) e autenticadas (home, criar post, conta).
 - `screens/`: telas principais, como `HomeScreen`, `SearchScreen`, `CreateScreen`, `AccountScreen` e `MyPostsScreen`.
 - `services/api.ts`: instância do Axios configurável via variável de ambiente.
+- `backend/`: API Node/Express que alimenta o aplicativo (detalhes na seção "Backend").
 
 ## 🔐 Variáveis de ambiente
 
@@ -69,31 +78,41 @@ Após alterar variáveis, reinicie o Metro bundler (`npx expo start -c`).
 
 ## 🌐 Backend & Banco
 
-O aplicativo espera um backend com os seguintes endpoints (prefixados por `/api`):
+O backend agora mora no diretório `backend/` dentro deste mesmo repositório e expõe os seguintes endpoints (prefixados por `/api`):
 
 - `POST /auth/login`, `POST /auth/register`
 - `GET /users/me`, `PUT /users/me`
 - `GET /posts`, `GET /posts/search`, `GET /posts/my-posts`
 - `POST /posts`, `POST /posts/:id/like`, `POST /posts/:id/unlike`, `DELETE /posts/:id`
 
-Referência de stack utilizada:
+### Stack do backend
 
 - Express 5 + TypeScript
-- Mongoose 8 com modelos `User`, `Post`, `Like`
+- Mongoose 8 com modelos `User`, `Post`, `Interaction`, `Like`
 - Autenticação JWT via Bearer Token
-- Upload de imagens em base64 (limite de 15 MB configurado)
+- Upload de imagens em base64 (limite de 15 MB via `express.json`)
 - MongoDB Atlas com connection string armazenada em `MONGO_URI`
 
-### Configurando o backend (projeto irmão)
+### Como rodar localmente
 
-1. Clone o repositório do backend (caso ainda não exista, crie um com a pasta `Workspace/backend`).
-2. Copie `.env.example` para `.env` e preencha `MONGO_URI`, `MONGO_DB_NAME` e `PORT`.
-3. Instale dependências e suba o servidor:
-	```bash
-	npm install
-	npm run dev
-	```
-4. Garanta que o endpoint `GET /api` responda com “Dultive API is running!” e atualize `EXPO_PUBLIC_API_URL` no app.
+```bash
+cd backend
+cp .env.example .env          # defina MONGO_URI, MONGO_DB_NAME, JWT_SECRET, PORT
+npm install
+npm run dev
+```
+
+Se estiver tudo certo, o terminal exibirá `MongoDB connected` e a API ficará disponível em `http://localhost:5000/api`.
+
+### Deploy no Render (ou similar)
+
+1. Faça fork ou use este repositório em uma conta que tenha acesso ao Render.
+2. Na plataforma, crie um **Web Service** apontando para este repo e escolha a pasta `backend` como diretório raiz (Render → "Root Directory").
+3. Configure os comandos:
+	- **Build Command:** `npm install && npm run build`
+	- **Start Command:** `npm run start`
+4. Adicione as variáveis de ambiente obrigatórias (`PORT`, `MONGO_URI`, `MONGO_DB_NAME`, `JWT_SECRET`, etc.).
+5. Após o deploy, copie a URL pública (ex.: `https://dultive-backend.onrender.com/api`) e ajuste `EXPO_PUBLIC_API_URL` no app.
 
 ## 📦 Scripts úteis
 
