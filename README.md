@@ -109,7 +109,7 @@ Se estiver tudo certo, o terminal exibirá `MongoDB connected` e a API ficará d
 1. Faça fork ou use este repositório em uma conta que tenha acesso ao Render.
 2. Na plataforma, crie um **Web Service** apontando para este repo e escolha a pasta `backend` como diretório raiz (Render → "Root Directory").
 3. Configure os comandos:
-	- **Build Command:** `npm install && npm run build`
+	- **Build Command:** `npm install` (o `postinstall` será executado automaticamente e gerará `dist/`)
 	- **Start Command:** `npm run start`
 4. Adicione as variáveis de ambiente obrigatórias (`PORT`, `MONGO_URI`, `MONGO_DB_NAME`, `JWT_SECRET`, etc.).
 5. Após o deploy, copie a URL pública (ex.: `https://dultive-backend.onrender.com/api`) e ajuste `EXPO_PUBLIC_API_URL` no app.
