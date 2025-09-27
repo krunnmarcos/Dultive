@@ -39,8 +39,10 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; userType: string };
       req.user = decoded;
     } catch (error) {
-      console.error('optionalAuth error:', error);
-      return res.status(401).json({ message: 'Não autorizado, token inválido' });
+      console.warn('optionalAuth: ignoring invalid token', error);
+      // Token inválido não deve bloquear rotas públicas.
+      // Limpa qualquer usuário anexado e segue sem autenticação.
+      delete req.user;
     }
   }
 
