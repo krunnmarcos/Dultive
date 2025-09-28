@@ -1,6 +1,15 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 import { COLORS } from '../constants/colors';
@@ -24,6 +33,8 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState(''); // Adicionado CNPJ
   const { showModal } = useFeedbackModal();
+  const insets = useSafeAreaInsets();
+  const contentBottomInset = insets.bottom + 48;
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
@@ -51,41 +62,98 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Image source={require('../../assets/icon.png')} style={styles.logo} />
-      </View>
-      <Text style={styles.title}>Criar Conta</Text>
-      <Text style={styles.subtitle}>Selecione seu tipo de conta</Text>
-
-      <View style={styles.userTypeSelector}>
-        <TouchableOpacity
-          style={[styles.userTypeButton, userType === 'person' && styles.userTypeSelected]}
-          onPress={() => setUserType('person')}
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.select({ ios: 'padding', android: undefined })}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: contentBottomInset }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={[styles.userTypeText, userType === 'person' && styles.userTypeSelectedText]}>Pessoa Física</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.userTypeButton, userType === 'company' && styles.userTypeSelected]}
-          onPress={() => setUserType('company')}
-        >
-          <Text style={[styles.userTypeText, userType === 'company' && styles.userTypeSelectedText]}>Empresa</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={[styles.header, { paddingTop: insets.top + 40 }]}>
+            <Image source={require('../../assets/logo-branca.png')} style={styles.logo} />
+          </View>
 
-      <InputField placeholder="Nome Completo" value={name} onChangeText={setName} />
-      <InputField placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
-      <InputField placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
-      <InputField placeholder="Confirme a Senha" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
-      {userType === 'person' ? (
-        <InputField placeholder="CPF" value={cpf} onChangeText={setCpf} keyboardType="numeric" />
-      ) : (
-        <InputField placeholder="CNPJ" value={cnpj} onChangeText={setCnpj} keyboardType="numeric" />
-      )}
+          <View style={styles.form}>
+            <Text style={styles.title}>Criar Conta</Text>
+            <Text style={styles.subtitle}>Selecione seu tipo de conta</Text>
 
-      <CustomButton title="Continuar" onPress={handleRegister} />
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Já tenho conta</Text>
-      </TouchableOpacity>
+            <View style={styles.userTypeSelector}>
+              <TouchableOpacity
+                style={[styles.userTypeButton, userType === 'person' && styles.userTypeSelected]}
+                onPress={() => setUserType('person')}
+              >
+                <Text
+                  style={[styles.userTypeText, userType === 'person' && styles.userTypeSelectedText]}
+                >
+                  Pessoa Física
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.userTypeButton, userType === 'company' && styles.userTypeSelected]}
+                onPress={() => setUserType('company')}
+              >
+                <Text
+                  style={[styles.userTypeText, userType === 'company' && styles.userTypeSelectedText]}
+                >
+                  Empresa
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <InputField
+              placeholder="Nome Completo"
+              value={name}
+              onChangeText={setName}
+              style={styles.fieldSpacing}
+            />
+            <InputField
+              placeholder="E-mail"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              style={styles.fieldSpacing}
+            />
+            <InputField
+              placeholder="Senha"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              style={styles.fieldSpacing}
+            />
+            <InputField
+              placeholder="Confirme a Senha"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              style={styles.fieldSpacing}
+            />
+            {userType === 'person' ? (
+              <InputField
+                placeholder="CPF"
+                value={cpf}
+                onChangeText={setCpf}
+                keyboardType="numeric"
+                style={styles.fieldSpacing}
+              />
+            ) : (
+              <InputField
+                placeholder="CNPJ"
+                value={cnpj}
+                onChangeText={setCnpj}
+                keyboardType="numeric"
+                style={styles.fieldSpacing}
+              />
+            )}
+
+            <CustomButton title="Continuar" onPress={handleRegister} style={styles.buttonSpacing} />
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.link}>Já tenho conta</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -93,59 +161,76 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
     backgroundColor: COLORS.background,
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
     backgroundColor: COLORS.primary,
-    padding: 20,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    width: '100%',
+    marginBottom: 32,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 140,
+    height: 140,
     resizeMode: 'contain',
+  },
+  form: {
+    width: '100%',
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  fieldSpacing: {
+    marginVertical: 0,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: COLORS.icon,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   userTypeSelector: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 8,
   },
   userTypeButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    flex: 1,
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    marginHorizontal: 5,
+    alignItems: 'center',
   },
   userTypeSelected: {
     backgroundColor: COLORS.primary,
   },
   userTypeText: {
     color: COLORS.primary,
+    fontWeight: '600',
   },
   userTypeSelectedText: {
     color: COLORS.card,
+  },
+  buttonSpacing: {
+    marginVertical: 0,
   },
   link: {
     color: COLORS.primary,

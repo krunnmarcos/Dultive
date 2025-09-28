@@ -2,17 +2,20 @@ import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { FONTS } from '../constants/fonts';
 import AuthContext from '../contexts/AuthContext';
 import CustomButton from '../components/CustomButton';
 import InputField from '../components/InputField';
 import api from '../services/api';
 import { globalStyles } from '../constants/styles';
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
+import { AccountStackNavigationProp } from '../navigation/types';
 
 const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<AccountStackNavigationProp>();
   const { user, updateUser, refreshUser } = useContext(AuthContext);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -85,6 +88,7 @@ const EditProfileScreen = () => {
         message: 'Suas informações foram salvas com sucesso.',
         type: 'success',
       });
+      navigation.goBack();
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
       const message = (error as any)?.response?.data?.message || 'Não foi possível atualizar o perfil.';
@@ -100,20 +104,26 @@ const EditProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
         <View style={[globalStyles.header, { paddingTop: insets.top + 15 }]}>
           <Text style={globalStyles.headerTitle}>Editar Perfil</Text>
         </View>
-        <View style={globalStyles.container}>
+        <View style={[globalStyles.container, styles.formContent]}>
 
           <View style={styles.avatarContainer}>
-            <Image
-              source={profileImage ? { uri: profileImage } : require('../../assets/icon.png')}
-              style={styles.avatar}
-            />
-            <TouchableOpacity style={styles.changeAvatarButton} onPress={handleImagePick}>
-              <Text style={styles.changeAvatarText}>Alterar Foto</Text>
-            </TouchableOpacity>
+            <View style={styles.avatarWrapper}>
+              <Image
+                source={profileImage ? { uri: profileImage } : require('../../assets/icon.png')}
+                style={styles.avatar}
+              />
+              <TouchableOpacity
+                style={styles.avatarCameraButton}
+                onPress={handleImagePick}
+                activeOpacity={0.85}
+              >
+                <Feather name="camera" size={20} color={COLORS.card} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <InputField label="Nome Completo" value={name} onChangeText={setName} />
@@ -132,25 +142,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  formContent: {
+    paddingTop: 24,
+  },
   avatarContainer: {
     alignItems: 'center',
     marginBottom: 30,
+    marginTop: 24,
+  },
+  avatarWrapper: {
+    position: 'relative',
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 10,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
   },
-  changeAvatarButton: {
+  avatarCameraButton: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
     backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-  },
-  changeAvatarText: {
-    color: COLORS.card,
-    fontFamily: FONTS.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.card,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
 });
 
