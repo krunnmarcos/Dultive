@@ -42,22 +42,32 @@ export const sendEmail = async ({
   text: string;
   html?: string;
 }) => {
+  const logPrefix = '[EmailService]';
+
   if (!transporter) {
-    console.info('[Email desabilitado] Para:', to);
-    console.info('Assunto:', subject);
-    console.info('Conteúdo:', text);
+    console.info(`${logPrefix} SMTP não configurado. Simulando envio.`);
+    console.info(`${logPrefix} Para: ${to}`);
+    console.info(`${logPrefix} Assunto: ${subject}`);
+    console.info(`${logPrefix} Conteúdo: ${text}`);
     return;
   }
 
   const from = EMAIL_FROM || SMTP_USER;
+  console.log(`${logPrefix} Enviando e-mail para ${to} (assunto: ${subject}).`);
 
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    });
+    console.log(`${logPrefix} E-mail enviado com sucesso para ${to}.`);
+  } catch (error) {
+    console.error(`${logPrefix} Falha ao enviar e-mail para ${to}:`, error);
+    throw error;
+  }
 };
 
 export const sendVerificationEmail = async (email: string, code: string) => {
