@@ -49,10 +49,10 @@ const AppNavigator = () => {
             headerShown: false,
           })}
         >
-          <Tab.Screen name="Home" component={HomeScreen} />
-          <Tab.Screen name="Search" component={SearchScreen} />
-          <Tab.Screen name="Create" component={CreateScreen} />
-          <Tab.Screen name="Account" component={AccountNavigator} />
+          <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
+          <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Pesquisar' }} />
+          <Tab.Screen name="Create" component={CreateScreen} options={{ title: 'Criar' }} />
+          <Tab.Screen name="Account" component={AccountNavigator} options={{ title: 'Conta' }} />
         </Tab.Navigator>
       ) : (
         <AuthNavigator />

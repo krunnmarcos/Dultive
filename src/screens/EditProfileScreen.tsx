@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants/colors';
@@ -9,6 +9,7 @@ import CustomButton from '../components/CustomButton';
 import InputField from '../components/InputField';
 import api from '../services/api';
 import { globalStyles } from '../constants/styles';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
@@ -16,6 +17,7 @@ const EditProfileScreen = () => {
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [profileImage, setProfileImage] = useState(user?.profileImage || null);
+  const { showModal } = useFeedbackModal();
 
   if (!user) {
     return (
@@ -55,7 +57,11 @@ const EditProfileScreen = () => {
       const trimmedPhone = phone.trim();
 
       if (!trimmedName) {
-        alert('Informe um nome válido.');
+        showModal({
+          title: 'Nome inválido',
+          message: 'Informe um nome válido para continuar.',
+          type: 'warning',
+        });
         return;
       }
 
@@ -73,12 +79,20 @@ const EditProfileScreen = () => {
 
       const response = await api.put('/users/me', payload);
       await updateUser(response.data);
-  await refreshUser();
-      alert('Perfil atualizado com sucesso!');
+      await refreshUser();
+      showModal({
+        title: 'Perfil atualizado',
+        message: 'Suas informações foram salvas com sucesso.',
+        type: 'success',
+      });
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
       const message = (error as any)?.response?.data?.message || 'Não foi possível atualizar o perfil.';
-      alert(message);
+      showModal({
+        title: 'Erro ao atualizar perfil',
+        message,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }

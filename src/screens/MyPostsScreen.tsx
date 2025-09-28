@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
@@ -8,6 +8,7 @@ import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
 import { globalStyles } from '../constants/styles';
 import { Ionicons } from '@expo/vector-icons';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 // Interface para o formato do post vindo da API
 interface ApiPost {
@@ -32,6 +33,7 @@ const MyPostsScreen = () => {
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showModal } = useFeedbackModal();
 
   const fetchMyPosts = useCallback(async () => {
     try {
@@ -40,11 +42,15 @@ const MyPostsScreen = () => {
       setPosts(response.data);
     } catch (error) {
       console.error("Erro ao buscar meus posts:", error);
-      alert('Não foi possível carregar seus posts.');
+      showModal({
+        title: 'Erro ao carregar',
+        message: 'Não foi possível carregar seus posts. Tente novamente.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -53,26 +59,40 @@ const MyPostsScreen = () => {
   );
 
   const handleDeletePost = (postId: string) => {
-    Alert.alert(
-      'Excluir post',
-      'Tem certeza de que deseja excluir este post? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
+    showModal({
+      title: 'Excluir post',
+      message: 'Tem certeza de que deseja excluir este post? Esta ação não pode ser desfeita.',
+      type: 'warning',
+      dismissible: false,
+      actions: [
         {
-          text: 'Excluir',
-          style: 'destructive',
+          label: 'Cancelar',
+          variant: 'ghost',
+        },
+        {
+          label: 'Excluir',
+          variant: 'danger',
           onPress: async () => {
             try {
               await api.delete(`/posts/${postId}`);
               setPosts((prev) => prev.filter((post) => post._id !== postId));
+              showModal({
+                title: 'Post excluído',
+                message: 'Seu post foi removido com sucesso.',
+                type: 'success',
+              });
             } catch (error) {
               console.error('Erro ao deletar post:', error);
-              alert('Não foi possível deletar o post. Tente novamente.');
+              showModal({
+                title: 'Erro ao excluir',
+                message: 'Não foi possível deletar o post. Tente novamente.',
+                type: 'error',
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   return (

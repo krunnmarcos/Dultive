@@ -5,6 +5,8 @@ export const COLORS = {
   card: '#FFFFFF',
   icon: '#868484',
   error: '#FF4444',
+  success: '#2E7D32',
+  warning: '#F9A825',
   text: '#333333',
   lightGray: '#F0F0F0',
 };

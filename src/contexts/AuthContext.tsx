@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { useFeedbackModal } from './FeedbackModalContext';
 
 interface User {
   id: string;
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showModal } = useFeedbackModal();
 
   const refreshUser = useCallback(async () => {
     if (!api.defaults.headers.Authorization) {
@@ -90,30 +92,53 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       await refreshUser();
     } catch (error) {
       console.error('Erro no login:', error);
-      // Adicionar tratamento de erro para o usuário
-      alert('Falha no login. Verifique suas credenciais.');
+      showModal({
+        title: 'Falha no login',
+        message: 'Verifique suas credenciais e tente novamente.',
+        type: 'error',
+      });
     }
   }
 
   async function register(userData: object) {
     try {
       await api.post('/auth/register', userData);
-      alert('Cadastro realizado com sucesso! Faça o login.');
+      showModal({
+        title: 'Cadastro realizado!',
+        message: 'Faça o login para continuar.',
+        type: 'success',
+      });
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       if (error.response && error.response.data && error.response.data.message) {
         if (error.response.data.message.includes('CPF')) {
-          alert('Já existe um cadastro com este CPF.');
+          showModal({
+            title: 'CPF já cadastrado',
+            message: 'Já existe um cadastro com este CPF.',
+            type: 'warning',
+          });
           return;
         }
         if (error.response.data.message.includes('CNPJ')) {
-          alert('Já existe um cadastro com este CNPJ.');
+          showModal({
+            title: 'CNPJ já cadastrado',
+            message: 'Já existe um cadastro com este CNPJ.',
+            type: 'warning',
+          });
           return;
         }
-        alert(error.response.data.message);
+        showModal({
+          title: 'Erro no cadastro',
+          message: error.response.data.message,
+          type: 'error',
+        });
         return;
       }
-      alert('Falha no cadastro. Verifique os dados e tente novamente.');
+      showModal({
+        title: 'Falha no cadastro',
+        message: 'Verifique os dados e tente novamente.',
+        type: 'error',
+      });
     }
   }
 

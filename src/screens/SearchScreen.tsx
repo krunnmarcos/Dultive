@@ -8,6 +8,7 @@ import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { globalStyles } from '../constants/styles';
 import { Ionicons } from '@expo/vector-icons';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 type FilterType = 'all' | 'donation' | 'help_request';
 
@@ -36,6 +37,7 @@ const SearchScreen = () => {
   const [results, setResults] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const { showModal } = useFeedbackModal();
 
   const handleSearch = useCallback(async (query: string) => {
     setLoading(true);
@@ -52,11 +54,15 @@ const SearchScreen = () => {
       setResults(response.data);
     } catch (error) {
       console.error('Erro ao buscar posts:', error);
-      alert('Não foi possível carregar os resultados da busca.');
+      showModal({
+        title: 'Erro na busca',
+        message: 'Não foi possível carregar os resultados. Tente novamente.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, showModal]);
 
   useEffect(() => {
     handleSearch(searchQuery);

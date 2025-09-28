@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import PostCard, { PostCardProps } from '../components/PostCard';
 import { COLORS } from '../constants/colors';
+import { FONTS } from '../constants/fonts';
 import api from '../services/api';
 
 import { useFocusEffect } from '@react-navigation/native';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 // ... (imports)
 
@@ -32,32 +34,37 @@ const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('Todos');
+  const [filter, setFilter] = useState<'Todos' | 'Doações' | 'Pedidos'>('Todos');
+  const { showModal } = useFeedbackModal();
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/posts');
       setPosts(response.data);
     } catch (error) {
       console.error("Erro ao buscar posts:", error);
-      alert('Não foi possível carregar o feed. Tente novamente.');
+      showModal({
+        title: 'Erro ao carregar feed',
+        message: 'Não foi possível carregar o feed. Tente novamente.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [showModal]);
 
   // useFocusEffect para recarregar os posts sempre que a tela ganhar foco
   useFocusEffect(
     React.useCallback(() => {
       fetchPosts();
-    }, [])
+    }, [fetchPosts])
   );
 
-  const filteredPosts = posts.filter(post => {
+  const filteredPosts = posts.filter((post) => {
     if (filter === 'Todos') return true;
-    if (filter === 'Preciso') return post.postType === 'help_request';
-    if (filter === 'Posso Ajudar') return post.postType === 'donation';
+    if (filter === 'Pedidos') return post.postType === 'help_request';
+    if (filter === 'Doações') return post.postType === 'donation';
     return true;
   });
 
@@ -74,7 +81,24 @@ const HomeScreen = () => {
       </View>
 
       <View style={styles.filterContainer}>
-        {/* ... (filtros) */}
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'Todos' && styles.filterSelected]}
+          onPress={() => setFilter('Todos')}
+        >
+          <Text style={[styles.filterText, filter === 'Todos' && styles.filterSelectedText]}>Todos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'Doações' && styles.filterSelected]}
+          onPress={() => setFilter('Doações')}
+        >
+          <Text style={[styles.filterText, filter === 'Doações' && styles.filterSelectedText]}>Doações</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'Pedidos' && styles.filterSelected]}
+          onPress={() => setFilter('Pedidos')}
+        >
+          <Text style={[styles.filterText, filter === 'Pedidos' && styles.filterSelectedText]}>Pedidos</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -129,32 +153,35 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.primary,
   },
-  filterContainer: {
-    flexDirection: 'row',
-    padding: 10,
+    filterContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: 16,
+      marginBottom: 16,
+    paddingHorizontal: 24,
+    columnGap: 12,
   },
-  chip: {
-    backgroundColor: COLORS.card,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+  filterButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 20,
-    marginHorizontal: 5,
     borderWidth: 1,
-    borderColor: COLORS.secondary,
-  },
-  chipSelected: {
-    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  chipText: {
-    color: COLORS.primary,
+  filterSelected: {
+    backgroundColor: COLORS.primary,
   },
-  chipTextSelected: {
-    color: COLORS.card,
+  filterText: {
+    color: COLORS.primary,
+    fontFamily: FONTS.medium,
+  },
+  filterSelectedText: {
+    color: '#FFF',
   },
   listContent: {
     paddingHorizontal: 15,
     paddingBottom: 20,
+    paddingTop: 0,
   },
 });
 

@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AppTabNavigationProp } from '../navigation/types';
 import { globalStyles } from '../constants/styles';
 import { Ionicons } from '@expo/vector-icons';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 type PostType = 'help_request' | 'donation';
 type Category = 'alimentos' | 'roupas' | 'medicamentos' | 'brinquedos';
@@ -44,6 +45,7 @@ const CreateScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppTabNavigationProp>();
   const { user } = useContext(AuthContext);
+  const { showModal } = useFeedbackModal();
 
   // Se o usuário não estiver autenticado, exibe mensagem ou redireciona
   if (!user) {
@@ -76,6 +78,7 @@ const CreateScreen = () => {
   const [citySearch, setCitySearch] = useState('');
   const [statesLoading, setStatesLoading] = useState(false);
   const [citiesLoading, setCitiesLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -117,14 +120,18 @@ const CreateScreen = () => {
         setCities(mapped);
       } catch (error) {
         console.error('Erro ao carregar cidades:', error);
-        alert('Não foi possível carregar as cidades. Tente novamente.');
+        showModal({
+          title: 'Erro ao carregar cidades',
+          message: 'Não foi possível carregar as cidades. Tente novamente.',
+          type: 'error',
+        });
       } finally {
         setCitiesLoading(false);
       }
     };
 
     fetchCities();
-  }, [selectedState]);
+  }, [selectedState, showModal]);
 
   const filteredStates = useMemo(() => {
     const search = stateSearch.trim().toLowerCase();
@@ -144,13 +151,21 @@ const CreateScreen = () => {
 
   const handleAddImage = async () => {
     if (images.length >= 3) {
-      alert('Você pode adicionar no máximo 3 fotos.');
+      showModal({
+        title: 'Limite de imagens',
+        message: 'Você pode adicionar no máximo 3 fotos.',
+        type: 'warning',
+      });
       return;
     }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      alert('Precisamos da sua permissão para acessar a galeria.');
+      showModal({
+        title: 'Permissão necessária',
+        message: 'Precisamos da sua permissão para acessar a galeria.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -179,7 +194,11 @@ const CreateScreen = () => {
       setImages((prev) => [...prev, newImage]);
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
-      alert('Não foi possível adicionar a imagem.');
+      showModal({
+        title: 'Erro ao adicionar imagem',
+        message: 'Não foi possível adicionar a imagem. Tente novamente.',
+        type: 'error',
+      });
     }
   };
 
@@ -202,18 +221,30 @@ const CreateScreen = () => {
 
   const handlePublish = async () => {
     if (!title || !description) {
-      alert('Por favor, preencha o título e a descrição.');
+      showModal({
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha o título e a descrição do post.',
+        type: 'warning',
+      });
       return;
     }
 
     if (!selectedState || !selectedCity) {
-      alert('Selecione o estado e a cidade.');
+      showModal({
+        title: 'Defina a localização',
+        message: 'Selecione o estado e a cidade da publicação.',
+        type: 'warning',
+      });
       return;
     }
 
     // Regra: Empresas não podem pedir ajuda
     if (user?.userType === 'company' && postType === 'help_request') {
-      alert('Empresas podem apenas criar posts de doação.');
+      showModal({
+        title: 'Ação não permitida',
+        message: 'Empresas podem apenas criar posts de doação.',
+        type: 'warning',
+      });
       setPostType('donation'); // Força a seleção para 'doação'
       return;
     }
@@ -225,14 +256,14 @@ const CreateScreen = () => {
       title,
       description,
       category,
-  location: { address: formattedAddress },
+      location: { address: formattedAddress },
       images: images.map((image) => image.base64),
       // incluir tags futuramente
     };
 
     try {
+      setIsPublishing(true);
       await api.post('/posts', postData);
-      alert('Post publicado com sucesso!');
       setTitle('');
       setDescription('');
       setImages([]);
@@ -240,35 +271,88 @@ const CreateScreen = () => {
       setSelectedCity(null);
       setPostType(user?.userType === 'company' ? 'donation' : 'help_request');
       setCategory('alimentos');
-      navigation.navigate('Home'); // Navega para o feed
+      showModal({
+        title: 'Post publicado',
+        message: 'Seu post foi publicado com sucesso!',
+        type: 'success',
+        actions: [
+          {
+            label: 'Ver feed',
+            variant: 'primary',
+            onPress: () => navigation.navigate('Home'),
+          },
+        ],
+      });
     } catch (error) {
       console.error('Erro ao publicar:', error);
-      alert('Ocorreu um erro ao publicar seu post.');
+      const message = (error as any)?.response?.data?.message || 'Ocorreu um erro ao publicar seu post.';
+      showModal({
+        title: 'Erro ao publicar',
+        message,
+        type: 'error',
+      });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-      <ScrollView>
-        <View style={[globalStyles.header, { paddingTop: insets.top + 15 }]}>
-          <Text style={globalStyles.headerTitle}>Criar Publicação</Text>
-        </View>
-        <View style={globalStyles.container}>
-
-          <Text style={styles.sectionTitle}>O que você deseja fazer?</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.formContainer, { paddingTop: insets.top + 24 }]}>
+          <Text style={styles.primaryHeading}>O que você precisa?</Text>
           <View style={styles.typeSelector}>
             <TouchableOpacity
-              style={[styles.typeButton, postType === 'help_request' && styles.typeSelected, user?.userType === 'company' && styles.disabledButton]}
+              style={[
+                styles.typeCard,
+                postType === 'help_request' ? styles.helpCardSelected : styles.cardUnselected,
+                user?.userType === 'company' && styles.cardDisabled,
+              ]}
               onPress={() => setPostType('help_request')}
               disabled={user?.userType === 'company'}
+              activeOpacity={0.85}
             >
-              <Text style={[styles.typeText, postType === 'help_request' && styles.typeSelectedText]}>Preciso de Ajuda</Text>
+              <Text
+                style={[
+                  styles.typeCardTitle,
+                  postType === 'help_request' ? styles.helpTitleSelected : styles.cardTitleUnselected,
+                ]}
+              >
+                Preciso de Ajuda
+              </Text>
+              <Text
+                style={[
+                  styles.typeCardSubtitle,
+                  postType === 'help_request' ? styles.helpSubtitleSelected : styles.cardSubtitleUnselected,
+                ]}
+              >
+                Solicitar Doações
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.typeButton, postType === 'donation' && styles.typeSelected]}
+              style={[
+                styles.typeCard,
+                postType === 'donation' ? styles.donationCardSelected : styles.cardUnselected,
+              ]}
               onPress={() => setPostType('donation')}
+              activeOpacity={0.85}
             >
-              <Text style={[styles.typeText, postType === 'donation' && styles.typeSelectedText]}>Posso Ajudar</Text>
+              <Text
+                style={[
+                  styles.typeCardTitle,
+                  postType === 'donation' ? styles.donationTitleSelected : styles.cardTitleUnselected,
+                ]}
+              >
+                Posso Ajudar
+              </Text>
+              <Text
+                style={[
+                  styles.typeCardSubtitle,
+                  postType === 'donation' ? styles.donationSubtitleSelected : styles.cardSubtitleUnselected,
+                ]}
+              >
+                Oferecer Doações
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -352,9 +436,17 @@ const CreateScreen = () => {
             )}
           </View>
 
-          <CustomButton title="Publicar" onPress={handlePublish} />
+          <CustomButton title="Publicar" onPress={handlePublish} disabled={isPublishing} />
         </View>
       </ScrollView>
+      {isPublishing && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Publicando seu post...</Text>
+          </View>
+        </View>
+      )}
 
       {/* Modal Estados */}
       <Modal visible={stateModalVisible} animationType="fade" transparent>
@@ -616,32 +708,109 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontFamily: FONTS.semiBold,
   },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  formContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 32,
+  },
+  primaryHeading: {
+    fontSize: 22,
+    fontFamily: FONTS.bold,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
   typeSelector: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
+    columnGap: 16,
+    marginBottom: 24,
   },
-  typeButton: {
-    padding: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    width: '48%',
+  typeCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    minHeight: 120,
+    justifyContent: 'center',
+    backgroundColor: COLORS.card,
     alignItems: 'center',
   },
-  typeSelected: {
-    backgroundColor: COLORS.primary,
+  helpCardSelected: {
+    backgroundColor: 'rgba(255, 68, 68, 0.15)',
+    borderColor: 'rgba(255, 68, 68, 0.45)',
   },
-  typeText: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
+  donationCardSelected: {
+    backgroundColor: 'rgba(46, 125, 50, 0.18)',
+    borderColor: 'rgba(46, 125, 50, 0.45)',
   },
-  typeSelectedText: {
-    color: COLORS.card,
-  },
-  disabledButton: {
-    backgroundColor: COLORS.secondary,
+  cardUnselected: {
+    backgroundColor: COLORS.lightGray,
     borderColor: COLORS.icon,
+  },
+  cardDisabled: {
+    opacity: 0.6,
+  },
+  typeCardTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    fontWeight: '600',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  helpTitleSelected: {
+    color: COLORS.error,
+  },
+  donationTitleSelected: {
+    color: COLORS.success,
+  },
+  cardTitleUnselected: {
+    color: COLORS.icon,
+  },
+  typeCardSubtitle: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+  },
+  helpSubtitleSelected: {
+    color: 'rgba(255, 68, 68, 0.8)',
+  },
+  donationSubtitleSelected: {
+    color: 'rgba(46, 125, 50, 0.8)',
+  },
+  cardSubtitleUnselected: {
+    color: COLORS.icon,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  loadingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    alignItems: 'center',
+    gap: 16,
+    width: '80%',
+    maxWidth: 320,
+  },
+  loadingText: {
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 

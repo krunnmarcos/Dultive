@@ -5,6 +5,7 @@ import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 import { COLORS } from '../constants/colors';
 import AuthContext from '../contexts/AuthContext';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 // Mock navigation prop
 type NavigationProp = {
@@ -15,11 +16,16 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { signIn } = useContext(AuthContext);
+  const { showModal } = useFeedbackModal();
 
   const handleLogin = () => {
     // Validação básica
     if (!email || !password) {
-      alert('Por favor, preencha todos os campos.');
+      showModal({
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha todos os campos para continuar.',
+        type: 'warning',
+      });
       return;
     }
     signIn({ email, password });

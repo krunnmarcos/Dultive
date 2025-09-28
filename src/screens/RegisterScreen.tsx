@@ -5,6 +5,7 @@ import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 import { COLORS } from '../constants/colors';
 import AuthContext from '../contexts/AuthContext';
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 type UserType = 'person' | 'company';
 
@@ -22,10 +23,15 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState(''); // Adicionado CNPJ
+  const { showModal } = useFeedbackModal();
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
-      alert('As senhas não conferem.');
+      showModal({
+        title: 'Senhas diferentes',
+        message: 'As senhas informadas não conferem. Verifique e tente novamente.',
+        type: 'warning',
+      });
       return;
     }
 

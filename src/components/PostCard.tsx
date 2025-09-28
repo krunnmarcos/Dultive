@@ -56,8 +56,12 @@ const PostCard: React.FC<PostCardProps> = (post) => {
       if (response?.data?.likes !== undefined) {
         setLikes(response.data.likes);
       }
-    } catch (error) {
-      console.error('Error liking/unliking post:', error);
+    } catch (error: any) {
+      if (error.response) {
+        console.error('Error liking/unliking post:', error.response.status, error.response.data);
+      } else {
+        console.error('Error liking/unliking post:', error);
+      }
       // Revert UI changes if API call fails
       setLiked(previousLiked);
       setLikes(previousLikes);
@@ -127,11 +131,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 15,
     marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
   },
   header: {
     flexDirection: 'row',
