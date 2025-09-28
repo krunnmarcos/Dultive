@@ -51,10 +51,10 @@ const PostCard: React.FC<PostCardProps> = (post) => {
     setLikes(previousLiked ? previousLikes - 1 : previousLikes + 1);
 
     try {
-      if (previousLiked) {
-        await api.post(`/posts/${_id}/unlike`);
-      } else {
-        await api.post(`/posts/${_id}/like`);
+      const response = await api.post(`/posts/${_id}/like`);
+
+      if (response?.data?.likes !== undefined) {
+        setLikes(response.data.likes);
       }
     } catch (error) {
       console.error('Error liking/unliking post:', error);
