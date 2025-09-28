@@ -18,6 +18,7 @@ interface ApiPost {
   authorId: {
     name: string;
     profileImage?: string;
+    phone?: string;
   };
   location?: {
     address: string;

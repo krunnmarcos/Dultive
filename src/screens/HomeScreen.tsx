@@ -17,6 +17,7 @@ interface ApiPost {
   authorId: {
     name: string;
     profileImage?: string;
+    phone?: string;
   };
   location?: {
     address: string;
@@ -111,7 +112,8 @@ const HomeScreen = () => {
               _id={item._id}
               authorId={{
                 name: item.authorId?.name || 'Usuário Anônimo',
-                profileImage: item.authorId?.profileImage
+                profileImage: item.authorId?.profileImage,
+                phone: item.authorId?.phone,
               }}
               location={{
                 address: item.location?.address || 'Localização não informada'

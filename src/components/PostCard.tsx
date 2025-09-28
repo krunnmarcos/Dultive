@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Share, Linking } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api'; // Import api
+import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
 // Interface para as props do PostCard
 export interface PostCardProps {
@@ -10,6 +11,7 @@ export interface PostCardProps {
   authorId: {
     name: string;
     profileImage?: string;
+    phone?: string;
   };
   location?: {
     address: string;
@@ -27,6 +29,7 @@ const PostCard: React.FC<PostCardProps> = (post) => {
   const { _id, authorId, location, createdAt, postType, title, description, images, likes: initialLikes = 0, isLiked: initialIsLiked = false } = post;
   const [liked, setLiked] = useState(initialIsLiked); // Initialize with initialIsLiked
   const [likes, setLikes] = useState(initialLikes);
+  const { showModal } = useFeedbackModal();
 
   // Use useEffect to update 'liked' state when 'initialIsLiked' prop changes
   useEffect(() => {
@@ -78,6 +81,72 @@ const PostCard: React.FC<PostCardProps> = (post) => {
     return `${count} Curtidas`;
   };
 
+  const handleShare = async () => {
+    try {
+      const messageParts = [title];
+      if (description) {
+        messageParts.push(description);
+      }
+      if (location?.address) {
+        messageParts.push(`Local: ${location.address}`);
+      }
+
+      await Share.share({
+        title: 'Compartilhar publicação Dultive',
+        message: messageParts.join('\n\n'),
+      });
+    } catch (error) {
+      console.error('Erro ao compartilhar post:', error);
+    }
+  };
+
+  const handleContact = async () => {
+    const rawPhone = authorId?.phone ?? '';
+    const sanitizedPhone = rawPhone.replace(/\D/g, '');
+
+    if (!sanitizedPhone) {
+      showModal({
+        title: 'Contato indisponível',
+        message: 'Este usuário ainda não cadastrou um número de telefone.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    const postTypeDescription = postType === 'help_request' ? 'pedido de ajuda' : 'oferecimento de ajuda';
+    const message = `Olá! Vi seu post de ${postTypeDescription} no app Dultive! Podemos conversar?`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `whatsapp://send?phone=${sanitizedPhone}&text=${encodedMessage}`;
+    const webFallbackUrl = `https://wa.me/${sanitizedPhone}?text=${encodedMessage}`;
+
+    try {
+      const canOpenWhatsapp = await Linking.canOpenURL(whatsappUrl);
+      if (canOpenWhatsapp) {
+        await Linking.openURL(whatsappUrl);
+        return;
+      }
+
+      const canOpenWeb = await Linking.canOpenURL(webFallbackUrl);
+      if (canOpenWeb) {
+        await Linking.openURL(webFallbackUrl);
+        return;
+      }
+
+      showModal({
+        title: 'WhatsApp não disponível',
+        message: 'Não foi possível abrir o WhatsApp neste dispositivo.',
+        type: 'warning',
+      });
+    } catch (error) {
+      console.error('Erro ao abrir WhatsApp:', error);
+      showModal({
+        title: 'Erro ao abrir WhatsApp',
+        message: 'Algo deu errado ao tentar iniciar a conversa. Tente novamente mais tarde.',
+        type: 'error',
+      });
+    }
+  };
+
   return (
     <View style={styles.card}>
       {/* Header do Card */}
@@ -113,11 +182,11 @@ const PostCard: React.FC<PostCardProps> = (post) => {
           <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={liked ? COLORS.error : COLORS.icon} />
           <Text style={styles.actionText}>{formatLikes(likes)}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={[styles.actionButton, styles.shareButton]} onPress={handleShare}>
           <Ionicons name="share-social-outline" size={24} color={COLORS.icon} />
           <Text style={styles.actionText}>Compartilhar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.donateButton]}>
+        <TouchableOpacity style={[styles.actionButton, styles.donateButton]} onPress={handleContact}>
           <Text style={styles.donateButtonText}>{postType === 'donation' ? 'Quero Ajuda' : 'Quero Ajudar'}</Text>
         </TouchableOpacity>
       </View>
@@ -195,6 +264,10 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  shareButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   actionText: {
     marginLeft: 5,

@@ -40,7 +40,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
     const posts = await Post.find({ isActive: true })
-      .populate('authorId', 'name profileImage') // Popula com nome e imagem do autor
+      .populate('authorId', 'name profileImage phone') // Popula com nome, imagem e telefone do autor
       .sort({ createdAt: -1 }); // Ordena pelos mais recentes
 
     const userId = req.user?.id; // Get authenticated user ID
@@ -81,7 +81,7 @@ export const searchPosts = async (req: AuthRequest, res: Response) => {
     }
 
     const posts = await Post.find(query)
-      .populate('authorId', 'name profileImage')
+      .populate('authorId', 'name profileImage phone')
       .sort({ createdAt: -1 });
 
     const userId = req.user?.id; // Get authenticated user ID
@@ -107,7 +107,7 @@ export const getMyPosts = async (req: AuthRequest, res: Response) => {
 
   try {
     const posts = await Post.find({ authorId: authorId, isActive: true })
-      .populate('authorId', 'name profileImage')
+      .populate('authorId', 'name profileImage phone')
       .sort({ createdAt: -1 });
 
     const userId = req.user?.id; // Get authenticated user ID
