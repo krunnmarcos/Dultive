@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Share, Linking } from 'react-native';
 import { COLORS } from '../constants/colors';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../services/api'; // Import api
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
 
@@ -12,6 +12,8 @@ export interface PostCardProps {
     name: string;
     profileImage?: string;
     phone?: string;
+    userType?: 'person' | 'company';
+    isVerified?: boolean;
   };
   location?: {
     address: string;
@@ -30,6 +32,8 @@ const PostCard: React.FC<PostCardProps> = (post) => {
   const [liked, setLiked] = useState(initialIsLiked); // Initialize with initialIsLiked
   const [likes, setLikes] = useState(initialLikes);
   const { showModal } = useFeedbackModal();
+  const isCompanyAuthor = authorId?.userType?.toLowerCase?.() === 'company';
+  const showVerifiedBadge = isCompanyAuthor || authorId?.isVerified;
 
   // Use useEffect to update 'liked' state when 'initialIsLiked' prop changes
   useEffect(() => {
@@ -156,7 +160,19 @@ const PostCard: React.FC<PostCardProps> = (post) => {
           style={styles.avatar}
         />
         <View style={styles.headerText}>
-          <Text style={styles.authorName} numberOfLines={1}>{authorId?.name || 'Usuário'}</Text>
+          <View style={styles.authorRow}>
+            <Text style={styles.authorName} numberOfLines={1}>{authorId?.name || 'Usuário'}</Text>
+            {showVerifiedBadge && (
+              <MaterialCommunityIcons
+                name="check-decagram"
+                size={20}
+                color={COLORS.primary}
+                style={styles.verifiedIcon}
+                accessibilityLabel="Conta verificada"
+                accessibilityRole="image"
+              />
+            )}
+          </View>
           <Text style={styles.location} numberOfLines={1}>{location?.address || 'Local não informado'} • {formattedDate}</Text>
         </View>
         {postType === 'help_request' && (
@@ -217,8 +233,17 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginRight: 10,
   },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   authorName: {
     fontWeight: 'bold',
+  },
+  verifiedIcon: {
+    marginTop: 1,
+    marginLeft: 4,
   },
   location: {
     color: COLORS.icon,

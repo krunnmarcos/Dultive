@@ -29,9 +29,9 @@ interface AuthContextData {
   loading: boolean;
   updateUser(user: User): Promise<void>;
   refreshUser(): Promise<void>;
-  signIn(credentials: object): Promise<void>;
+  signIn(credentials: object): Promise<boolean>;
   signOut(): void;
-  register(userData: object): Promise<void>;
+  register(userData: object): Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     loadStorageData();
   }, [refreshUser]);
 
-  async function signIn(credentials: object) {
+  async function signIn(credentials: object): Promise<boolean> {
     try {
       const response = await api.post('/auth/login', credentials);
       const { token, user } = response.data;
@@ -90,6 +90,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       await AsyncStorage.setItem('@Dultive:token', token);
 
       await refreshUser();
+      return true;
     } catch (error) {
       console.error('Erro no login:', error);
       showModal({
@@ -97,10 +98,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         message: 'Verifique suas credenciais e tente novamente.',
         type: 'error',
       });
+      return false;
     }
   }
 
-  async function register(userData: object) {
+  async function register(userData: object): Promise<boolean> {
     try {
       await api.post('/auth/register', userData);
       showModal({
@@ -108,6 +110,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         message: 'Faça o login para continuar.',
         type: 'success',
       });
+      return true;
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       if (error.response && error.response.data && error.response.data.message) {
@@ -117,7 +120,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             message: 'Já existe um cadastro com este CPF.',
             type: 'warning',
           });
-          return;
+          return false;
         }
         if (error.response.data.message.includes('CNPJ')) {
           showModal({
@@ -125,20 +128,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             message: 'Já existe um cadastro com este CNPJ.',
             type: 'warning',
           });
-          return;
+          return false;
         }
         showModal({
           title: 'Erro no cadastro',
           message: error.response.data.message,
           type: 'error',
         });
-        return;
+        return false;
       }
       showModal({
         title: 'Falha no cadastro',
         message: 'Verifique os dados e tente novamente.',
         type: 'error',
       });
+      return false;
     }
   }
 

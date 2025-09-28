@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
@@ -15,12 +15,13 @@ type NavigationProp = {
 const LoginScreen = ({ navigation }: { navigation: NavigationProp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn } = useContext(AuthContext);
   const { showModal } = useFeedbackModal();
   const insets = useSafeAreaInsets();
   const headerOffset = insets.top + 180;
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     // Validação básica
     if (!email || !password) {
       showModal({
@@ -30,7 +31,12 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp }) => {
       });
       return;
     }
-    signIn({ email, password });
+    setIsSubmitting(true);
+    try {
+      await signIn({ email, password });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,7 +69,12 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp }) => {
             secureTextEntry
             style={styles.fieldSpacing}
           />
-          <CustomButton title="Entrar" onPress={handleLogin} style={styles.buttonSpacing} />
+          <CustomButton
+            title="Entrar"
+            onPress={handleLogin}
+            style={styles.buttonSpacing}
+            disabled={isSubmitting}
+          />
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
           </TouchableOpacity>
@@ -73,6 +84,14 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp }) => {
       <Text style={styles.terms}>
         Ao continuar, você concorda com nossos Termos de Serviço e Política de Privacidade.
       </Text>
+      {isSubmitting && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Entrando...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -133,6 +152,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: COLORS.icon,
     fontSize: 12,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  loadingCard: {
+    backgroundColor: COLORS.card,
+    paddingVertical: 24,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 16,
+    minWidth: 200,
+    elevation: 6,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.text,
+    textAlign: 'center',
   },
 });
 

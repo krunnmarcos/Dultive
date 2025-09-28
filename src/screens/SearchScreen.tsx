@@ -19,6 +19,8 @@ interface ApiPost {
     name: string;
     profileImage?: string;
     phone?: string;
+    userType?: 'person' | 'company';
+    isVerified?: boolean;
   };
   location?: {
     address: string;

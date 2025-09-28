@@ -18,6 +18,8 @@ interface ApiPost {
     name: string;
     profileImage?: string;
     phone?: string;
+    userType?: 'person' | 'company';
+    isVerified?: boolean;
   };
   location?: {
     address: string;
@@ -114,6 +116,8 @@ const HomeScreen = () => {
                 name: item.authorId?.name || 'Usuário Anônimo',
                 profileImage: item.authorId?.profileImage,
                 phone: item.authorId?.phone,
+                userType: item.authorId?.userType,
+                isVerified: item.authorId?.isVerified,
               }}
               location={{
                 address: item.location?.address || 'Localização não informada'

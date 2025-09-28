@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import InputField from '../components/InputField';
@@ -32,11 +33,12 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState(''); // Adicionado CNPJ
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { showModal } = useFeedbackModal();
   const insets = useSafeAreaInsets();
   const contentBottomInset = insets.bottom + 48;
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (password !== confirmPassword) {
       showModal({
         title: 'Senhas diferentes',
@@ -55,9 +57,15 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
       cnpj: userType === 'company' ? cnpj : undefined,
     };
 
-    register(userData).then(() => {
-      navigation.navigate('Login');
-    });
+    setIsSubmitting(true);
+    try {
+      const success = await register(userData);
+      if (success) {
+        navigation.navigate('Login');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -147,13 +155,26 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
               />
             )}
 
-            <CustomButton title="Continuar" onPress={handleRegister} style={styles.buttonSpacing} />
+            <CustomButton
+              title="Continuar"
+              onPress={handleRegister}
+              style={styles.buttonSpacing}
+              disabled={isSubmitting}
+            />
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Text style={styles.link}>Já tenho conta</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {isSubmitting && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Criando sua conta...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -236,6 +257,27 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textAlign: 'center',
     marginTop: 10,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  loadingCard: {
+    backgroundColor: COLORS.card,
+    paddingVertical: 24,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 16,
+    minWidth: 220,
+    elevation: 6,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.text,
+    textAlign: 'center',
   },
 });
 
