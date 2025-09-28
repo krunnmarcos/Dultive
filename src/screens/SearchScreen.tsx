@@ -1,46 +1,37 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
-import PostCard, { PostCardProps } from '../components/PostCard';
+import PostCard from '../components/PostCard';
 import api from '../services/api';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { globalStyles } from '../constants/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
+import { Post } from '../types/Post';
+import { SearchStackNavigationProp } from '../navigation/types';
 
 type FilterType = 'all' | 'donation' | 'help_request';
-
-// Interface para o formato do post vindo da API
-interface ApiPost {
-  _id: string;
-  authorId: {
-    name: string;
-    profileImage?: string;
-    phone?: string;
-    userType?: 'person' | 'company';
-    isVerified?: boolean;
-  };
-  location?: {
-    address: string;
-  };
-  createdAt: string;
-  postType: 'donation' | 'help_request';
-  title: string;
-  description: string;
-  images?: string[];
-  likesCount?: number; // Add likesCount
-  isLiked?: boolean; // Add isLiked
-}
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
-  const [results, setResults] = useState<ApiPost[]>([]);
+  const [results, setResults] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const { showModal } = useFeedbackModal();
+  const navigation = useNavigation<SearchStackNavigationProp>();
 
   const handleSearch = useCallback(async (query: string) => {
     setLoading(true);
@@ -53,7 +44,7 @@ const SearchScreen = () => {
         params.postType = filter;
       }
 
-      const response = await api.get('/posts/search', { params });
+  const response = await api.get<Post[]>('/posts/search', { params });
       setResults(response.data);
     } catch (error) {
       console.error('Erro ao buscar posts:', error);
@@ -71,11 +62,11 @@ const SearchScreen = () => {
     handleSearch(searchQuery);
   }, [searchQuery, filter, handleSearch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      handleSearch(searchQuery);
-    }, [handleSearch, searchQuery])
-  );
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await handleSearch(searchQuery);
+    setRefreshing(false);
+  }, [handleSearch, searchQuery]);
 
   const handleTagPress = (tag: string) => {
     if (selectedTag === tag) {
@@ -96,7 +87,11 @@ const SearchScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+        }
+      >
         <View style={globalStyles.container}>
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
@@ -157,7 +152,21 @@ const SearchScreen = () => {
             {loading ? (
               <ActivityIndicator size="large" color={COLORS.primary} />
             ) : results.length > 0 ? (
-              results.map((post) => <PostCard key={post._id} {...post} likes={post.likesCount} isLiked={post.isLiked} />)
+              results.map((post) => (
+                <PostCard
+                  key={post._id}
+                  {...post}
+                  authorId={{
+                    ...post.authorId,
+                    name: post.authorId?.name || 'Usuário Anônimo',
+                  }}
+                  location={{
+                    address: post.location?.address || 'Localização não informada',
+                  }}
+                  likes={post.likesCount}
+                  onPress={() => navigation.navigate('PostDetails', { post })}
+                />
+              ))
             ) : (
               <Text style={styles.noResultsText}>Nenhum resultado encontrado para sua busca.</Text>
             )}

@@ -1,5 +1,8 @@
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps, BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Post } from '../types/Post';
+
+type PostDetailsParams = { post: Post };
 
 // Tipos para o AuthNavigator (Stack)
 export type AuthStackParamList = {
@@ -15,6 +18,17 @@ export type AppTabParamList = {
   Account: { screen: string }; // Para poder navegar para telas aninhadas
 };
 
+// Tipos para os stacks de Home e Search
+export type HomeStackParamList = {
+  HomeRoot: undefined;
+  PostDetails: PostDetailsParams;
+};
+
+export type SearchStackParamList = {
+  SearchRoot: undefined;
+  PostDetails: PostDetailsParams;
+};
+
 // Tipos para o AccountNavigator (Stack)
 export type AccountStackParamList = {
   AccountRoot: undefined;
@@ -22,6 +36,7 @@ export type AccountStackParamList = {
   MyPosts: undefined;
   Settings: undefined;
   Help: undefined;
+  PostDetails: PostDetailsParams;
 };
 
 // Props para cada tela do Auth Stack
@@ -34,6 +49,11 @@ export type SearchScreenProps = BottomTabScreenProps<AppTabParamList, 'Search'>;
 export type CreateScreenProps = BottomTabScreenProps<AppTabParamList, 'Create'>;
 export type AccountScreenProps = BottomTabScreenProps<AppTabParamList, 'Account'>;
 
+// Props para stacks específicos
+export type HomeStackScreenProps = NativeStackScreenProps<HomeStackParamList, 'HomeRoot'>;
+export type SearchStackScreenProps = NativeStackScreenProps<SearchStackParamList, 'SearchRoot'>;
+export type PostDetailsScreenProps = NativeStackScreenProps<{ PostDetails: PostDetailsParams }, 'PostDetails'>;
+
 // Props para cada tela do Account Stack
 export type AccountRootScreenProps = NativeStackScreenProps<AccountStackParamList, 'AccountRoot'>;
 export type EditProfileScreenProps = NativeStackScreenProps<AccountStackParamList, 'EditProfile'>;
@@ -44,3 +64,7 @@ export type AppTabNavigationProp = BottomTabNavigationProp<AppTabParamList>;
 
 // Tipo para o hook useNavigation dentro do Account Stack
 export type AccountStackNavigationProp = NativeStackNavigationProp<AccountStackParamList>;
+
+export type HomeStackNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
+export type SearchStackNavigationProp = NativeStackNavigationProp<SearchStackParamList>;
+export type PostDetailsNavigationProp = NativeStackNavigationProp<{ PostDetails: PostDetailsParams }>;

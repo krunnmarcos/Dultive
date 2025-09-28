@@ -1,47 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import api from '../services/api';
-import PostCard, { PostCardProps } from '../components/PostCard';
+import PostCard from '../components/PostCard';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
 import { globalStyles } from '../constants/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
-
-// Interface para o formato do post vindo da API
-interface ApiPost {
-  _id: string;
-  authorId: {
-    name: string;
-    profileImage?: string;
-    phone?: string;
-    userType?: 'person' | 'company';
-    isVerified?: boolean;
-  };
-  location?: {
-    address: string;
-  };
-  createdAt: string;
-  postType: 'donation' | 'help_request';
-  title: string;
-  description: string;
-  images?: string[];
-  likesCount?: number; // Add likesCount
-  isLiked?: boolean; // Add isLiked
-}
+import { Post } from '../types/Post';
+import { AccountStackNavigationProp } from '../navigation/types';
 
 const MyPostsScreen = () => {
   const insets = useSafeAreaInsets();
-  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { showModal } = useFeedbackModal();
+  const navigation = useNavigation<AccountStackNavigationProp>();
 
-  const fetchMyPosts = useCallback(async () => {
+  const loadMyPosts = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await api.get('/posts/my-posts');
+      const response = await api.get<Post[]>('/posts/my-posts');
       setPosts(response.data);
     } catch (error) {
       console.error("Erro ao buscar meus posts:", error);
@@ -50,16 +31,24 @@ const MyPostsScreen = () => {
         message: 'Não foi possível carregar seus posts. Tente novamente.',
         type: 'error',
       });
-    } finally {
-      setLoading(false);
     }
   }, [showModal]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchMyPosts();
-    }, [fetchMyPosts])
-  );
+  useEffect(() => {
+    const fetchInitialPosts = async () => {
+      setLoading(true);
+      await loadMyPosts();
+      setLoading(false);
+    };
+
+    fetchInitialPosts();
+  }, [loadMyPosts]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadMyPosts();
+    setRefreshing(false);
+  }, [loadMyPosts]);
 
   const handleDeletePost = (postId: string) => {
     showModal({
@@ -114,7 +103,18 @@ const MyPostsScreen = () => {
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
               <View style={styles.postWrapper}>
-                <PostCard {...item} likes={item.likesCount} isLiked={item.isLiked} />
+                <PostCard
+                  {...item}
+                  authorId={{
+                    ...item.authorId,
+                    name: item.authorId?.name || 'Usuário Anônimo',
+                  }}
+                  location={{
+                    address: item.location?.address || 'Localização não informada',
+                  }}
+                  likes={item.likesCount}
+                  onPress={() => navigation.navigate('PostDetails', { post: item })}
+                />
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={() => handleDeletePost(item._id)}
@@ -131,6 +131,8 @@ const MyPostsScreen = () => {
               </View>
             }
             contentContainerStyle={{ flexGrow: 1 }}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
           />
         )}
       </View>

@@ -1,8 +1,6 @@
 import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import HomeScreen from '../screens/HomeScreen';
-import SearchScreen from '../screens/SearchScreen';
 import CreateScreen from '../screens/CreateScreen';
 import AccountNavigator from './AccountNavigator';
 import AuthNavigator from './AuthNavigator';
@@ -10,6 +8,8 @@ import AuthContext from '../contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import HomeNavigator from './HomeNavigator';
+import SearchNavigator from './SearchNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -49,8 +49,8 @@ const AppNavigator = () => {
             headerShown: false,
           })}
         >
-          <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
-          <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Pesquisar' }} />
+          <Tab.Screen name="Home" component={HomeNavigator} options={{ title: 'Início' }} />
+          <Tab.Screen name="Search" component={SearchNavigator} options={{ title: 'Pesquisar' }} />
           <Tab.Screen name="Create" component={CreateScreen} options={{ title: 'Criar' }} />
           <Tab.Screen name="Account" component={AccountNavigator} options={{ title: 'Conta' }} />
         </Tab.Navigator>

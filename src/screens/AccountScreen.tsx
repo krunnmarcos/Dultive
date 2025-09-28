@@ -11,10 +11,12 @@ import { globalStyles } from '../constants/styles';
 
 import { AccountStackParamList } from '../navigation/types';
 
+type AccountSimpleScreens = Exclude<keyof AccountStackParamList, 'PostDetails'>;
+
 interface MenuItem {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
-  screen?: keyof AccountStackParamList;
+  screen?: AccountSimpleScreens;
   onPress?: () => void;
   iconColor?: string;
   textColor?: string;
@@ -39,7 +41,7 @@ const AccountScreen: React.FC = () => {
     },
   ];
 
-  const handleNavigation = (screen?: keyof AccountStackParamList) => {
+  const handleNavigation = (screen?: AccountSimpleScreens) => {
     if (!screen) {
       return;
     }

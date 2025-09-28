@@ -1,49 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import PostCard, { PostCardProps } from '../components/PostCard';
+import PostCard from '../components/PostCard';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
 import api from '../services/api';
 
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
-
-// ... (imports)
-
-// Interface para o formato do post vindo da API
-interface ApiPost {
-  _id: string;
-  authorId: {
-    name: string;
-    profileImage?: string;
-    phone?: string;
-    userType?: 'person' | 'company';
-    isVerified?: boolean;
-  };
-  location?: {
-    address: string;
-  };
-  createdAt: string;
-  postType: 'donation' | 'help_request';
-  title: string;
-  description: string;
-  images?: string[];
-  likesCount?: number; // Add likesCount
-  isLiked?: boolean; // Add isLiked
-}
+import { Post } from '../types/Post';
+import { HomeStackNavigationProp } from '../navigation/types';
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'Todos' | 'Doações' | 'Pedidos'>('Todos');
   const { showModal } = useFeedbackModal();
+  const navigation = useNavigation<HomeStackNavigationProp>();
 
-  const fetchPosts = useCallback(async () => {
+  const loadPosts = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await api.get('/posts');
+      const response = await api.get<Post[]>('/posts');
       setPosts(response.data);
     } catch (error) {
       console.error("Erro ao buscar posts:", error);
@@ -52,17 +31,24 @@ const HomeScreen = () => {
         message: 'Não foi possível carregar o feed. Tente novamente.',
         type: 'error',
       });
-    } finally {
-      setLoading(false);
     }
   }, [showModal]);
 
-  // useFocusEffect para recarregar os posts sempre que a tela ganhar foco
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchPosts();
-    }, [fetchPosts])
-  );
+  useEffect(() => {
+    const fetchInitialPosts = async () => {
+      setLoading(true);
+      await loadPosts();
+      setLoading(false);
+    };
+
+    fetchInitialPosts();
+  }, [loadPosts]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadPosts();
+    setRefreshing(false);
+  }, [loadPosts]);
 
   const filteredPosts = posts.filter((post) => {
     if (filter === 'Todos') return true;
@@ -70,12 +56,6 @@ const HomeScreen = () => {
     if (filter === 'Doações') return post.postType === 'donation';
     return true;
   });
-
-  // Função para formatar o tempo (ex: '2h atrás')
-  const formatTimestamp = (date: string) => {
-    // Lógica de formatação de data (simplificada)
-    return new Date(date).toLocaleDateString();
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -111,30 +91,22 @@ const HomeScreen = () => {
           data={filteredPosts}
           renderItem={({ item }) => (
             <PostCard
-              _id={item._id}
+              {...item}
               authorId={{
+                ...item.authorId,
                 name: item.authorId?.name || 'Usuário Anônimo',
-                profileImage: item.authorId?.profileImage,
-                phone: item.authorId?.phone,
-                userType: item.authorId?.userType,
-                isVerified: item.authorId?.isVerified,
               }}
               location={{
-                address: item.location?.address || 'Localização não informada'
+                address: item.location?.address || 'Localização não informada',
               }}
-              createdAt={item.createdAt}
-              postType={item.postType}
-              title={item.title}
-              description={item.description}
-              images={item.images}
-              likes={item.likesCount} // Pass likesCount
-              isLiked={item.isLiked} // Pass isLiked
+              likes={item.likesCount}
+              onPress={() => navigation.navigate('PostDetails', { post: item })}
             />
           )}
           keyExtractor={item => item._id}
           contentContainerStyle={styles.listContent}
-          onRefresh={fetchPosts} // Adiciona pull-to-refresh
-          refreshing={loading}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
         />
       )}
     </SafeAreaView>

@@ -1,38 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Share, Linking } from 'react-native';
 import { COLORS } from '../constants/colors';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import api from '../services/api'; // Import api
 import { useFeedbackModal } from '../contexts/FeedbackModalContext';
+import { Post } from '../types/Post';
 
 // Interface para as props do PostCard
-export interface PostCardProps {
-  _id: string; // Adicionando _id para a key
-  authorId: {
-    name: string;
-    profileImage?: string;
-    phone?: string;
-    userType?: 'person' | 'company';
-    isVerified?: boolean;
-  };
-  location?: {
-    address: string;
-  };
-  createdAt: string;
-  postType: 'donation' | 'help_request';
-  title: string;
-  description: string;
-  images?: string[];
+export interface PostCardProps extends Post {
   likes?: number;
-  isLiked?: boolean; // Add isLiked property
 }
 
-const PostCard: React.FC<PostCardProps> = (post) => {
-  const { _id, authorId, location, createdAt, postType, title, description, images, likes: initialLikes = 0, isLiked: initialIsLiked = false } = post;
+interface PostCardComponentProps extends PostCardProps {
+  onPress?: () => void;
+}
+
+const PostCard: React.FC<PostCardComponentProps> = ({ onPress, ...post }) => {
+  const {
+    _id,
+    authorId,
+    location,
+    createdAt,
+    postType,
+    title,
+    description,
+    images,
+    isLiked: initialIsLiked = false,
+    likesCount = 0,
+    likes: explicitLikes,
+  } = post;
+
+  const initialLikes = explicitLikes ?? likesCount ?? 0;
   const [liked, setLiked] = useState(initialIsLiked); // Initialize with initialIsLiked
   const [likes, setLikes] = useState(initialLikes);
   const { showModal } = useFeedbackModal();
-  const isCompanyAuthor = authorId?.userType?.toLowerCase?.() === 'company';
+  const normalizedUserType = authorId?.userType ? String(authorId.userType).trim().toLowerCase() : null;
+  const isCompanyAuthor = normalizedUserType === 'company';
   const showVerifiedBadge = isCompanyAuthor || authorId?.isVerified;
 
   // Use useEffect to update 'liked' state when 'initialIsLiked' prop changes
@@ -151,8 +154,8 @@ const PostCard: React.FC<PostCardProps> = (post) => {
     }
   };
 
-  return (
-    <View style={styles.card}>
+  const cardContent = (
+    <>
       {/* Header do Card */}
       <View style={styles.header}>
         <Image
@@ -163,8 +166,8 @@ const PostCard: React.FC<PostCardProps> = (post) => {
           <View style={styles.authorRow}>
             <Text style={styles.authorName} numberOfLines={1}>{authorId?.name || 'Usuário'}</Text>
             {showVerifiedBadge && (
-              <MaterialCommunityIcons
-                name="check-decagram"
+              <MaterialIcons
+                name="verified"
                 size={20}
                 color={COLORS.primary}
                 style={styles.verifiedIcon}
@@ -206,6 +209,20 @@ const PostCard: React.FC<PostCardProps> = (post) => {
           <Text style={styles.donateButtonText}>{postType === 'donation' ? 'Quero Ajuda' : 'Quero Ajudar'}</Text>
         </TouchableOpacity>
       </View>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity style={styles.card} activeOpacity={0.92} onPress={onPress}>
+        {cardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={styles.card}>
+      {cardContent}
     </View>
   );
 };
