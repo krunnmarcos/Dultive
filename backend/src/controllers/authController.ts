@@ -2,6 +2,14 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
+import EmailVerification from '../models/EmailVerification';
+import { sendVerificationEmail } from '../services/emailService';
+
+const EMAIL_CODE_EXPIRATION_MINUTES = Number(process.env.EMAIL_VERIFICATION_CODE_TTL_MINUTES ?? 10);
+const EMAIL_CODE_RESEND_INTERVAL_SECONDS = Number(process.env.EMAIL_VERIFICATION_RESEND_INTERVAL_SECONDS ?? 60);
+const EMAIL_MAX_ATTEMPTS = Number(process.env.EMAIL_VERIFICATION_MAX_ATTEMPTS ?? 5);
+
+const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const serializeUser = (user: any) => ({
   id: user._id.toString(),
@@ -56,14 +64,67 @@ function validateCPF(cpf: string): boolean {
 }
 
 
+export const requestEmailVerificationCode = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({ message: 'Informe um e-mail válido.' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Este e-mail já está cadastrado.' });
+    }
+
+    const now = new Date();
+    const verificationRecord = await EmailVerification.findOne({ email: normalizedEmail });
+
+    if (verificationRecord) {
+      const secondsSinceLastSend = (now.getTime() - verificationRecord.lastSentAt.getTime()) / 1000;
+      if (secondsSinceLastSend < EMAIL_CODE_RESEND_INTERVAL_SECONDS) {
+        const waitSeconds = Math.ceil(EMAIL_CODE_RESEND_INTERVAL_SECONDS - secondsSinceLastSend);
+        return res.status(429).json({ message: `Aguarde ${waitSeconds}s para solicitar um novo código.` });
+      }
+    }
+
+    const code = generateVerificationCode();
+    const salt = await bcrypt.genSalt(10);
+    const codeHash = await bcrypt.hash(code, salt);
+    const expiresAt = new Date(now.getTime() + EMAIL_CODE_EXPIRATION_MINUTES * 60 * 1000);
+
+    await EmailVerification.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        email: normalizedEmail,
+        codeHash,
+        expiresAt,
+        attempts: 0,
+        resends: (verificationRecord?.resends ?? 0) + 1,
+        lastSentAt: now,
+      },
+      { upsert: true, new: true }
+    );
+
+    await sendVerificationEmail(normalizedEmail, code);
+
+    return res.status(200).json({ message: 'Código de verificação enviado para o seu e-mail.' });
+  } catch (error) {
+    console.error('Erro ao solicitar código de verificação:', error);
+    return res.status(500).json({ message: 'Não foi possível enviar o código. Tente novamente mais tarde.' });
+  }
+};
+
 export const register = async (req: Request, res: Response) => {
-  const { userType, name, email, password, phone, cpf, cnpj } = req.body;
+  const { userType, name, email, password, phone, cpf, cnpj, verificationCode } = req.body;
   console.log('Recebido no registro:', req.body);
 
   try {
     console.log('Iniciando validações...');
     // Validar dados de entrada
-    if (!userType || !name || !email || !password) {
+    if (!userType || !name || !email || !password || !verificationCode) {
       console.log('Campos obrigatórios faltando');
       return res.status(400).json({ message: 'Por favor, forneça todos os campos obrigatórios.' });
     }
@@ -80,11 +141,35 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'CPF inválido.' });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+
     // Verificar se o usuário já existe
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       console.log('Usuário já cadastrado:', email);
       return res.status(400).json({ message: 'Usuário já cadastrado com este e-mail.' });
+    }
+
+    const verificationRecord = await EmailVerification.findOne({ email: normalizedEmail });
+    if (!verificationRecord) {
+      return res.status(400).json({ message: 'Solicite o código de verificação para este e-mail antes de concluir o cadastro.' });
+    }
+
+    if (verificationRecord.expiresAt.getTime() < Date.now()) {
+      await EmailVerification.deleteOne({ _id: verificationRecord._id });
+      return res.status(400).json({ message: 'Código de verificação expirado. Solicite um novo código.' });
+    }
+
+    if (verificationRecord.attempts >= EMAIL_MAX_ATTEMPTS) {
+      await EmailVerification.deleteOne({ _id: verificationRecord._id });
+      return res.status(400).json({ message: 'Número máximo de tentativas excedido. Solicite um novo código.' });
+    }
+
+    const isCodeValid = await bcrypt.compare(String(verificationCode), verificationRecord.codeHash);
+    if (!isCodeValid) {
+      verificationRecord.attempts += 1;
+      await verificationRecord.save();
+      return res.status(400).json({ message: 'Código de verificação inválido.' });
     }
 
     // Hash da senha
@@ -96,16 +181,18 @@ export const register = async (req: Request, res: Response) => {
     const newUser = new User({
       userType,
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       phone,
       cpf: userType === 'person' ? cpf : undefined,
       cnpj: userType === 'company' ? cnpj : undefined,
+      isVerified: true,
     });
     console.log('Novo usuário criado:', newUser);
     try {
       await newUser.save();
       console.log('Usuário salvo com sucesso!');
+      await EmailVerification.deleteOne({ _id: verificationRecord._id });
       res.status(201).json({ message: 'Usuário registrado com sucesso!' });
     } catch (saveError: any) {
       console.error('Erro ao salvar usuário:', saveError);

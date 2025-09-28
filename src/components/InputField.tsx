@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet, ViewStyle, KeyboardTypeOptions } from 'react-native';
+import { View, TextInput, Text, StyleSheet, ViewStyle, KeyboardTypeOptions, StyleProp } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 interface InputFieldProps {
@@ -9,7 +9,7 @@ interface InputFieldProps {
   onChangeText: (text: string) => void;
   secureTextEntry?: boolean;
   error?: string;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   keyboardType?: KeyboardTypeOptions;
   multiline?: boolean;
   numberOfLines?: number;

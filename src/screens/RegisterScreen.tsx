@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,18 +25,60 @@ type NavigationProp = {
 };
 
 const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
-  const { register } = useContext(AuthContext);
+  const { register, requestEmailCode } = useContext(AuthContext);
   const [userType, setUserType] = useState<UserType>('person');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState(''); // Adicionado CNPJ
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [emailUsedForCode, setEmailUsedForCode] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
   const { showModal } = useFeedbackModal();
   const insets = useSafeAreaInsets();
   const contentBottomInset = insets.bottom + 48;
+  const RESEND_INTERVAL_SECONDS = 60;
+
+  useEffect(() => {
+    if (!resendTimer) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleRequestCode = async () => {
+    const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
+    if (!trimmedEmail) {
+      showModal({
+        title: 'Informe um e-mail',
+        message: 'Digite um e-mail válido antes de solicitar o código de verificação.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    setIsRequestingCode(true);
+    const sent = await requestEmailCode(trimmedEmail);
+    setIsRequestingCode(false);
+
+    if (sent) {
+      setCodeSent(true);
+      setEmailUsedForCode(normalizedEmail);
+      setResendTimer(RESEND_INTERVAL_SECONDS);
+    }
+  };
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
@@ -48,13 +90,35 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
       return;
     }
 
+    if (!verificationCode.trim()) {
+      showModal({
+        title: 'Código obrigatório',
+        message: 'Informe o código enviado para o seu e-mail para concluir o cadastro.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
+    if (!emailUsedForCode || emailUsedForCode !== normalizedEmail) {
+      showModal({
+        title: 'Verifique o e-mail',
+        message: 'Solicite e informe o código do mesmo e-mail que deseja cadastrar.',
+        type: 'warning',
+      });
+      return;
+    }
+
     const userData = {
       userType,
       name,
-      email,
+      email: trimmedEmail,
       password,
       cpf: userType === 'person' ? cpf : undefined,
       cnpj: userType === 'company' ? cnpj : undefined,
+      verificationCode: verificationCode.trim(),
     };
 
     setIsSubmitting(true);
@@ -123,6 +187,29 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
               keyboardType="email-address"
               style={styles.fieldSpacing}
             />
+            <View style={styles.verificationRow}>
+              <InputField
+                placeholder="Código de verificação"
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                keyboardType="number-pad"
+                style={[styles.fieldSpacing, styles.verificationField]}
+              />
+              <TouchableOpacity
+                style={[styles.codeButton, resendTimer > 0 && styles.codeButtonDisabled]}
+                onPress={handleRequestCode}
+                disabled={isRequestingCode || resendTimer > 0}
+              >
+                <Text style={styles.codeButtonText}>
+                  {isRequestingCode ? 'Enviando...' : resendTimer > 0 ? `Aguardar ${resendTimer}s` : codeSent ? 'Reenviar' : 'Enviar código'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {codeSent && (
+              <Text style={styles.helperText}>
+                Não recebeu? Verifique a caixa de spam ou tente reenviar após alguns segundos.
+              </Text>
+            )}
             <InputField
               placeholder="Senha"
               value={password}
@@ -156,7 +243,7 @@ const RegisterScreen = ({ navigation }: { navigation: NavigationProp }) => {
             )}
 
             <CustomButton
-              title="Continuar"
+              title="Concluir cadastro"
               onPress={handleRegister}
               style={styles.buttonSpacing}
               disabled={isSubmitting}
@@ -257,6 +344,35 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textAlign: 'center',
     marginTop: 10,
+  },
+  verificationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  verificationField: {
+    flex: 1,
+  },
+  codeButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.card,
+  },
+  codeButtonDisabled: {
+    opacity: 0.6,
+  },
+  codeButtonText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  helperText: {
+    marginTop: -6,
+    marginBottom: 12,
+    fontSize: 12,
+    color: COLORS.icon,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

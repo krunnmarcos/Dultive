@@ -23,15 +23,31 @@ interface User {
   updatedAt?: string;
 }
 
+interface SignInCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterPayload {
+  userType: 'person' | 'company';
+  name: string;
+  email: string;
+  password: string;
+  cpf?: string;
+  cnpj?: string;
+  verificationCode: string;
+}
+
 interface AuthContextData {
   token: string | null;
   user: User | null;
   loading: boolean;
   updateUser(user: User): Promise<void>;
   refreshUser(): Promise<void>;
-  signIn(credentials: object): Promise<boolean>;
+  signIn(credentials: SignInCredentials): Promise<boolean>;
   signOut(): void;
-  register(userData: object): Promise<boolean>;
+  register(userData: RegisterPayload): Promise<boolean>;
+  requestEmailCode(email: string): Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -76,7 +92,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     loadStorageData();
   }, [refreshUser]);
 
-  async function signIn(credentials: object): Promise<boolean> {
+  async function signIn(credentials: SignInCredentials): Promise<boolean> {
     try {
       const response = await api.post('/auth/login', credentials);
       const { token, user } = response.data;
@@ -102,7 +118,28 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   }
 
-  async function register(userData: object): Promise<boolean> {
+  const requestEmailCode = async (email: string): Promise<boolean> => {
+    try {
+      await api.post('/auth/email/request-code', { email });
+      showModal({
+        title: 'Código enviado',
+        message: 'Enviamos um código de verificação para o seu e-mail. Verifique sua caixa de entrada ou spam.',
+        type: 'success',
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao solicitar código de verificação:', error);
+      const message = error?.response?.data?.message ?? 'Não foi possível enviar o código. Tente novamente.';
+      showModal({
+        title: 'Falha ao enviar código',
+        message,
+        type: 'error',
+      });
+      return false;
+    }
+  };
+
+  async function register(userData: RegisterPayload): Promise<boolean> {
     try {
       await api.post('/auth/register', userData);
       showModal({
@@ -113,8 +150,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       return true;
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      if (error.response && error.response.data && error.response.data.message) {
-        if (error.response.data.message.includes('CPF')) {
+      const errorMessage = error?.response?.data?.message;
+      if (errorMessage) {
+        if (errorMessage.includes('CPF')) {
           showModal({
             title: 'CPF já cadastrado',
             message: 'Já existe um cadastro com este CPF.',
@@ -122,7 +160,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           });
           return false;
         }
-        if (error.response.data.message.includes('CNPJ')) {
+        if (errorMessage.includes('CNPJ')) {
           showModal({
             title: 'CNPJ já cadastrado',
             message: 'Já existe um cadastro com este CNPJ.',
@@ -132,7 +170,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         }
         showModal({
           title: 'Erro no cadastro',
-          message: error.response.data.message,
+          message: errorMessage,
           type: 'error',
         });
         return false;
@@ -160,7 +198,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, updateUser, refreshUser, signIn, signOut, register }}>
+    <AuthContext.Provider
+      value={{ token, user, loading, updateUser, refreshUser, signIn, signOut, register, requestEmailCode }}
+    >
       {children}
     </AuthContext.Provider>
   );

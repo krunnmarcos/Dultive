@@ -81,6 +81,7 @@ Após alterar variáveis, reinicie o Metro bundler (`npx expo start -c`).
 O backend agora mora no diretório `backend/` dentro deste mesmo repositório e expõe os seguintes endpoints (prefixados por `/api`):
 
 - `POST /auth/login`, `POST /auth/register`
+- `POST /auth/email/request-code` (envio de código de verificação)
 - `GET /users/me`, `PUT /users/me`
 - `GET /posts`, `GET /posts/search`, `GET /posts/my-posts`
 - `POST /posts`, `POST /posts/:id/like`, `POST /posts/:id/unlike`, `DELETE /posts/:id`
@@ -103,6 +104,8 @@ npm run dev
 ```
 
 Se estiver tudo certo, o terminal exibirá `MongoDB connected` e a API ficará disponível em `http://localhost:5000/api`.
+
+> 💡 **Verificação de e-mail:** configure as variáveis `SMTP_*` e `EMAIL_FROM` no `.env` para que o backend consiga enviar o código de verificação. Em desenvolvimento você pode usar um serviço como [Mailtrap](https://mailtrap.io/) ou SMTP de teste.
 
 ### Deploy no Render (ou similar)
 
